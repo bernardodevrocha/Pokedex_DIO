@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pokédex</title>
+<style>
+  :root {
+    --bg: #f2f2f2;
+    --header: #dc0a2d;
+    --card: #ffffff;
+    --text: #2b2b2b;
+    --muted: #6b6b6b;
+    --normal:#a8a878; --fire:#f08030; --water:#6890f0; --electric:#f8d030;
+    --grass:#78c850; --ice:#98d8d8; --fighting:#c03028; --poison:#a040a0;
+    --ground:#e0c068; --flying:#a890f0; --psychic:#f85888; --bug:#a8b820;
+    --rock:#b8a038; --ghost:#705898; --dragon:#7038f8; --dark:#705848;
+    --steel:#b8b8d0; --fairy:#ee99ac;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Trebuchet MS", Verdana, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    background: var(--header);
+    padding: 18px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    box-shadow: 0 3px 6px rgba(0,0,0,.2);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header .pokeball {
+    width: 34px; height: 34px;
+    background:
+      linear-gradient(#fff 0 50%, #2b2b2b 50% 100%);
+    border-radius: 50%;
+    border: 3px solid #2b2b2b;
+    position: relative;
+  }
+  header .pokeball::after {
+    content: "";
+    position: absolute;
+    width: 12px; height: 12px;
+    background: #fff;
+    border: 3px solid #2b2b2b;
+    border-radius: 50%;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+  }
+  header h1 {
+    color: #fff;
+    margin: 0;
+    font-size: 28px;
+    text-shadow: 2px 2px 0 rgba(0,0,0,.25);
+    letter-spacing: 1px;
+  }
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 20px 16px 60px;
+  }
+  .search-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .search-bar input {
+    flex: 1;
+    padding: 10px 14px;
+    border-radius: 20px;
+    border: 2px solid #ccc;
+    font-size: 15px;
+    outline: none;
+  }
+  .search-bar input:focus { border-color: var(--header); }
+  .search-bar button {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 20px;
+    background: var(--header);
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  #status {
+    text-align: center;
+    color: var(--muted);
+    margin: 10px 0;
+    min-height: 20px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 16px;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 14px 10px;
+    text-align: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,.12);
+    cursor: pointer;
+    transition: transform .15s ease;
+  }
+  .card:hover { transform: translateY(-4px); }
+  .card img {
+    width: 90px;
+    height: 90px;
+    image-rendering: pixelated;
+  }
+  .card .id {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .card .name {
+    font-weight: bold;
+    text-transform: capitalize;
+    margin: 4px 0 8px;
+  }
+  .badges { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; }
+  .badge {
+    color: #fff;
+    font-size: 11px;
+    padding: 2px 9px;
+    border-radius: 10px;
+    text-transform: capitalize;
+    text-shadow: 1px 1px 1px rgba(0,0,0,.3);
+  }
+  .load-more {
+    display: block;
+    margin: 30px auto 0;
+    padding: 12px 28px;
+    border: none;
+    border-radius: 20px;
+    background: var(--header);
+    color: #fff;
+    font-weight: bold;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .load-more:disabled { opacity: .6; cursor: default; }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 100;
+  }
+  .overlay.open { display: flex; }
+  .modal {
+    background: #fff;
+    border-radius: 14px;
+    max-width: 380px;
+    width: 100%;
+    padding: 20px;
+    position: relative;
+  }
+  .modal .close {
+    position: absolute;
+    top: 10px; right: 14px;
+    border: none;
+    background: none;
+    font-size: 22px;
+    cursor: pointer;
+    color: var(--muted);
+  }
+  .modal img {
+    width: 130px;
+    height: 130px;
+    display: block;
+    margin: 0 auto;
+    image-rendering: pixelated;
+  }
+  .modal h2 { text-align: center; text-transform: capitalize; margin: 6px 0; }
+  .modal .id { text-align: center; color: var(--muted); margin-bottom: 10px; }
+  .stats { margin-top: 14px; }
+  .stat-row {
+    display: grid;
+    grid-template-columns: 90px 1fr 34px;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    margin-bottom: 6px;
+    text-transform: capitalize;
+  }
+  .stat-bar-bg {
+    background: #eee;
+    border-radius: 6px;
+    height: 8px;
+    overflow: hidden;
+  }
+  .stat-bar-fill {
+    height: 100%;
+    background: var(--header);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="pokeball"></div>
+  <h1>Pokédex</h1>
+</header>
+
+<main>
+  <div class="search-bar">
+    <input id="searchInput" type="text" placeholder="Buscar pokémon pelo nome...">
+    <button id="searchBtn">Buscar</button>
+  </div>
+
+  <div id="status"></div>
+  <div id="grid" class="grid"></div>
+  <button id="loadMoreBtn" class="load-more">Carregar mais</button>
+</main>
+
+<div id="overlay" class="overlay">
+  <div class="modal">
+    <button class="close" id="closeModal">&times;</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<script>
+  const API_BASE = "https://pokeapi.co/api/v2";
+  const PAGE_SIZE = 12;
+
+  let offset = 0;
+  let allPokemon = []; // { id, name, url, data? }
+
+  const gridEl = document.getElementById("grid");
+  const statusEl = document.getElementById("status");
+  const loadMoreBtn = document.getElementById("loadMoreBtn");
+  const searchInput = document.getElementById("searchInput");
+  const searchBtn = document.getElementById("searchBtn");
+  const overlay = document.getElementById("overlay");
+  const modalContent = document.getElementById("modalContent");
+  const closeModalBtn = document.getElementById("closeModal");
+
+  function idFromUrl(url) {
+    const parts = url.split("/").filter(Boolean);
+    return parts[parts.length - 1];
+  }
+
+  function spriteUrl(id) {
+    return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+  }
+
+  function paddedId(id) {
+    return "#" + String(id).padStart(3, "0");
+  }
+
+  async function fetchPokemonDetails(id) {
+    const res = await fetch(`${API_BASE}/pokemon/${id}`);
+    if (!res.ok) throw new Error("Falha ao buscar pokémon " + id);
+    return res.json();
+  }
+
+  function renderCard(details) {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `
+      <div class="id">${paddedId(details.id)}</div>
+      <img src="${spriteUrl(details.id)}" alt="${details.name}" loading="lazy">
+      <div class="name">${details.name}</div>
+      <div class="badges">
+        ${details.types.map(t => `<span class="badge" style="background:var(--${t.type.name}, #999)">${t.type.name}</span>`).join("")}
+      </div>
+    `;
+    card.addEventListener("click", () => openModal(details));
+    return card;
+  }
+
+  async function loadNextPage() {
+    loadMoreBtn.disabled = true;
+    statusEl.textContent = "Carregando...";
+    try {
+      const res = await fetch(`${API_BASE}/pokemon?limit=${PAGE_SIZE}&offset=${offset}`);
+      const data = await res.json();
+      const detailsList = await Promise.all(
+        data.results.map(p => fetchPokemonDetails(idFromUrl(p.url)))
+      );
+      detailsList.forEach(d => {
+        allPokemon.push(d);
+        gridEl.appendChild(renderCard(d));
+      });
+      offset += PAGE_SIZE;
+      if (!data.next) loadMoreBtn.style.display = "none";
+      statusEl.textContent = "";
+    } catch (err) {
+      statusEl.textContent = "Erro ao carregar pokémons. Tente novamente.";
+      console.error(err);
+    } finally {
+      loadMoreBtn.disabled = false;
+    }
+  }
+
+  function openModal(details) {
+    modalContent.innerHTML = `
+      <img src="${spriteUrl(details.id)}" alt="${details.name}">
+      <h2>${details.name}</h2>
+      <div class="id">${paddedId(details.id)}</div>
+      <div class="badges">
+        ${details.types.map(t => `<span class="badge" style="background:var(--${t.type.name}, #999)">${t.type.name}</span>`).join("")}
+      </div>
+      <p style="text-align:center;color:var(--muted);font-size:13px;margin:10px 0 0">
+        Altura: ${(details.height / 10).toFixed(1)} m &nbsp;|&nbsp; Peso: ${(details.weight / 10).toFixed(1)} kg
+      </p>
+      <div class="stats">
+        ${details.stats.map(s => `
+          <div class="stat-row">
+            <span>${s.stat.name.replace("special-", "sp. ")}</span>
+            <div class="stat-bar-bg">
+              <div class="stat-bar-fill" style="width:${Math.min(100, s.base_stat / 1.5)}%"></div>
+            </div>
+            <span>${s.base_stat}</span>
+          </div>
+        `).join("")}
+      </div>
+    `;
+    overlay.classList.add("open");
+  }
+
+  closeModalBtn.addEventListener("click", () => overlay.classList.remove("open"));
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.classList.remove("open");
+  });
+
+  loadMoreBtn.addEventListener("click", loadNextPage);
+
+  async function handleSearch() {
+    const term = searchInput.value.trim().toLowerCase();
+    if (!term) {
+      gridEl.innerHTML = "";
+      allPokemon = [];
+      offset = 0;
+      loadMoreBtn.style.display = "block";
+      loadNextPage();
+      return;
+    }
+    statusEl.textContent = "Buscando...";
+    gridEl.innerHTML = "";
+    loadMoreBtn.style.display = "none";
+    try {
+      const details = await fetchPokemonDetails(term);
+      gridEl.appendChild(renderCard(details));
+      statusEl.textContent = "";
+    } catch (err) {
+      statusEl.textContent = `Nenhum pokémon encontrado para "${term}".`;
+    }
+  }
+
+  searchBtn.addEventListener("click", handleSearch);
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") handleSearch();
+  });
+
+  loadNextPage();
+</script>
+
+</body>
+</html>
